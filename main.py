@@ -36,8 +36,14 @@ def ping():
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.get_json(silent=True) or {}
-    message = data.get("value") or data.get("message") or str(data)
+    # Intentar JSON primero
+    data = request.get_json(silent=True)
+    if data:
+        message = data.get("value") or data.get("message") or str(data)
+    else:
+        # TradingView envía texto plano
+        message = request.data.decode("utf-8").strip()
+
     if message:
         send_telegram(message)
         print(f"[webhook] enviado: {message[:80]}")
