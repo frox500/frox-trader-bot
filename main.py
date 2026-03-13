@@ -6,10 +6,9 @@ import time
 
 app = Flask(__name__)
 
-TELEGRAM_TOKEN    = os.environ["8756006176:AAECfsLUpN7hxepXTGvgWvKieXlGdvfl7GQ
-"]
-TELEGRAM_CHAT_ID  = os.environ["-1002087543269"]
-RENDER_URL        = os.environ["https://frox-trader-bot.onrender.com"]
+TELEGRAM_TOKEN    = os.environ["TELEGRAM_TOKEN"]
+TELEGRAM_CHAT_ID  = os.environ["TELEGRAM_CHAT_ID"]
+RENDER_URL        = os.environ["RENDER_URL"]
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
