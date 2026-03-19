@@ -1,22 +1,22 @@
 from flask import Flask, request
+import requests
 import os
 import json
-import requests
 import threading
 import time
 
 app = Flask(__name__)
 
-TOKEN   = os.environ["TELEGRAM_TOKEN"]
-CHAT_ID = os.environ["CHAT_ID"]
-SELF_URL = os.environ.get("RENDER_URL", "")
+TELEGRAM_TOKEN   = os.environ["TELEGRAM_TOKEN"]
+TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
+RENDER_URL       = os.environ["RENDER_URL"]
 
-def send_telegram(mensaje: str):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+def send_telegram(message):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     try:
         requests.post(url, json={
-            "chat_id"    : CHAT_ID,
-            "text"       : mensaje,
+            "chat_id"    : TELEGRAM_CHAT_ID,
+            "text"       : message,
             "parse_mode" : "HTML"
         }, timeout=10)
     except Exception as e:
@@ -25,9 +25,8 @@ def send_telegram(mensaje: str):
 def keep_alive():
     while True:
         try:
-            if SELF_URL:
-                requests.get(SELF_URL + "/ping", timeout=10)
-                print("[keep_alive] ping OK")
+            requests.get(RENDER_URL + "/ping", timeout=10)
+            print("[keep_alive] ping OK")
         except Exception as e:
             print(f"[keep_alive] error: {e}")
         time.sleep(600)
@@ -60,7 +59,7 @@ def webhook():
 
         emoji  = "🟢" if side == "LONG" else "🔴"
 
-        mensaje = (
+        message = (
             f"{emoji} <b>{side} — Frox Trader</b>\n"
             f"━━━━━━━━━━━━━━━━\n"
             f"📌 Señal: {signal} | Conf: {conf}/5\n"
@@ -73,20 +72,24 @@ def webhook():
             f"━━━━━━━━━━━━━━━━\n"
             f"📊 MAC: {mac}"
         )
+    elif data:
+        message = data.get("value") or data.get("message") or str(data)
     else:
-        mensaje = body
+        message = body
 
-    if mensaje:
-        send_telegram(mensaje)
+    if message:
+        send_telegram(message)
+        print(f"[webhook] enviado: {message[:80]}")
         return "OK", 200
-    return "Empty", 400
+    return "Empty payload", 400
 
 @app.route("/", methods=["GET"])
 def home():
-    return "Angel Bot - Online ✅", 200
+    return "Frox Trader Bot - Online ✅", 200
 
 if __name__ == "__main__":
     t = threading.Thread(target=keep_alive, daemon=True)
     t.start()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
