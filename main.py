@@ -1,12 +1,15 @@
 import os
 import json
 import requests
+import threading
+import time
 from fastapi import FastAPI, Request
 
 app = FastAPI()
 
-TOKEN   = os.environ["TELEGRAM_TOKEN"]
-CHAT_ID = os.environ["CHAT_ID"]
+TOKEN    = os.environ["TELEGRAM_TOKEN"]
+CHAT_ID  = os.environ["CHAT_ID"]
+SELF_URL = os.environ.get("RENDER_URL", "")
 
 def send_telegram(mensaje: str):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -16,11 +19,30 @@ def send_telegram(mensaje: str):
         "parse_mode" : "HTML"
     })
 
+def keep_alive():
+    while True:
+        try:
+            if SELF_URL:
+                requests.get(SELF_URL + "/ping", timeout=10)
+                print("[keep_alive] ping OK")
+        except Exception as e:
+            print(f"[keep_alive] error: {e}")
+        time.sleep(600)
+
+@app.on_event("startup")
+def startup():
+    t = threading.Thread(target=keep_alive, daemon=True)
+    t.start()
+
+@app.get("/ping")
+def ping():
+    return "pong"
+
 @app.post("/webhook")
 async def webhook(request: Request):
-    # ✅ Acepta JSON y texto plano
     body = await request.body()
     text = body.decode("utf-8").strip()
+    print(f"[webhook] recibido: {text[:100]}")
 
     try:
         data = json.loads(text)
