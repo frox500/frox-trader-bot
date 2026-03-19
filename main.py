@@ -1,23 +1,26 @@
+from flask import Flask, request
 import os
 import json
 import requests
 import threading
 import time
-from fastapi import FastAPI, Request
 
-app = FastAPI()
+app = Flask(__name__)
 
-TOKEN    = os.environ["TELEGRAM_TOKEN"]
-CHAT_ID  = os.environ["CHAT_ID"]
+TOKEN   = os.environ["TELEGRAM_TOKEN"]
+CHAT_ID = os.environ["CHAT_ID"]
 SELF_URL = os.environ.get("RENDER_URL", "")
 
 def send_telegram(mensaje: str):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, json={
-        "chat_id"    : CHAT_ID,
-        "text"       : mensaje,
-        "parse_mode" : "HTML"
-    })
+    try:
+        requests.post(url, json={
+            "chat_id"    : CHAT_ID,
+            "text"       : mensaje,
+            "parse_mode" : "HTML"
+        }, timeout=10)
+    except Exception as e:
+        print(f"[Telegram error] {e}")
 
 def keep_alive():
     while True:
@@ -29,23 +32,17 @@ def keep_alive():
             print(f"[keep_alive] error: {e}")
         time.sleep(600)
 
-@app.on_event("startup")
-def startup():
-    t = threading.Thread(target=keep_alive, daemon=True)
-    t.start()
-
-@app.get("/ping")
+@app.route("/ping", methods=["GET"])
 def ping():
-    return "pong"
+    return "pong", 200
 
-@app.post("/webhook")
-async def webhook(request: Request):
-    body = await request.body()
-    text = body.decode("utf-8").strip()
-    print(f"[webhook] recibido: {text[:100]}")
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    body = request.data.decode("utf-8").strip()
+    print(f"[webhook] recibido: {body[:100]}")
 
     try:
-        data = json.loads(text)
+        data = json.loads(body)
     except Exception:
         data = {}
 
@@ -77,13 +74,19 @@ async def webhook(request: Request):
             f"📊 MAC: {mac}"
         )
     else:
-        mensaje = text
+        mensaje = body
 
     if mensaje:
         send_telegram(mensaje)
-        return {"status": "ok"}
-    return {"status": "empty"}
+        return "OK", 200
+    return "Empty", 400
 
-@app.get("/")
-def health():
-    return {"status": "Frox Alerts Bot running 🟢"}
+@app.route("/", methods=["GET"])
+def home():
+    return "Angel Bot - Online ✅", 200
+
+if __name__ == "__main__":
+    t = threading.Thread(target=keep_alive, daemon=True)
+    t.start()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
