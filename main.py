@@ -1,45 +1,33 @@
-from flask import Flask, request
-import requests
 import os
-import threading
-import time
+import json
+import requests
+from fastapi import FastAPI, Request
 
-app = Flask(__name__)
+app = FastAPI()
 
-TELEGRAM_TOKEN   = os.environ["TELEGRAM_TOKEN"]
-TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
-RENDER_URL       = os.environ["RENDER_URL"]
+TOKEN   = os.environ["TELEGRAM_TOKEN"]
+CHAT_ID = os.environ["CHAT_ID"]
 
-def send_telegram(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+def send_telegram(mensaje: str):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    requests.post(url, json={
+        "chat_id"    : CHAT_ID,
+        "text"       : mensaje,
+        "parse_mode" : "HTML"
+    })
+
+@app.post("/webhook")
+async def webhook(request: Request):
+    # ✅ Acepta JSON y texto plano
+    body = await request.body()
+    text = body.decode("utf-8").strip()
+
     try:
-        requests.post(url, json={
-            "chat_id"    : TELEGRAM_CHAT_ID,
-            "text"       : message,
-            "parse_mode" : "HTML"
-        }, timeout=10)
-    except Exception as e:
-        print(f"[Telegram error] {e}")
-
-def keep_alive():
-    while True:
-        try:
-            requests.get(RENDER_URL + "/ping", timeout=10)
-            print("[keep_alive] ping OK")
-        except Exception as e:
-            print(f"[keep_alive] error: {e}")
-        time.sleep(600)
-
-@app.route("/ping", methods=["GET"])
-def ping():
-    return "pong", 200
-
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    data = request.get_json(silent=True)
+        data = json.loads(text)
+    except Exception:
+        data = {}
 
     if data and "side" in data:
-        # ✅ JSON estructurado de Frox Trader
         side   = data.get("side", "")
         signal = data.get("signal", "")
         conf   = data.get("conf", "")
@@ -53,7 +41,7 @@ def webhook():
 
         emoji  = "🟢" if side == "LONG" else "🔴"
 
-        message = (
+        mensaje = (
             f"{emoji} <b>{side} — Frox Trader</b>\n"
             f"━━━━━━━━━━━━━━━━\n"
             f"📌 Señal: {signal} | Conf: {conf}/5\n"
@@ -66,26 +54,14 @@ def webhook():
             f"━━━━━━━━━━━━━━━━\n"
             f"📊 MAC: {mac}"
         )
-
-    elif data:
-        # JSON genérico
-        message = data.get("value") or data.get("message") or str(data)
     else:
-        # Texto plano
-        message = request.data.decode("utf-8").strip()
+        mensaje = text
 
-    if message:
-        send_telegram(message)
-        print(f"[webhook] enviado: {message[:80]}")
-        return "OK", 200
-    return "Empty payload", 400
+    if mensaje:
+        send_telegram(mensaje)
+        return {"status": "ok"}
+    return {"status": "empty"}
 
-@app.route("/", methods=["GET"])
-def home():
-    return "Frox Trader Bot - Online ✅", 200
-
-if __name__ == "__main__":
-    t = threading.Thread(target=keep_alive, daemon=True)
-    t.start()
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+@app.get("/")
+def health():
+    return {"status": "Frox Alerts Bot running 🟢"}
