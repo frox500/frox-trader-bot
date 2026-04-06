@@ -46,18 +46,20 @@ def webhook():
         data = {}
 
     if data and "side" in data:
-        side   = data.get("side", "")
-        signal = data.get("signal", "")
-        conf   = data.get("conf", "")
-        tf     = data.get("tf", "")
-        par    = data.get("par", "BTCUSDT")
-        entry  = data.get("entry", "")
-        sl     = data.get("sl", "")
-        tp1    = data.get("tp1", "")
-        tp2    = data.get("tp2", "")
-        mac    = data.get("mac", "")
+        side     = data.get("side",     "")
+        signal   = data.get("signal",   "")
+        conf     = data.get("conf",     "")
+        tf       = data.get("tf",       "")
+        par      = data.get("par",      "BTCUSDT")
+        entry    = data.get("entry",    "")
+        sl       = data.get("sl",       "")
+        tp1      = data.get("tp1",      "")
+        tp2      = data.get("tp2",      "")
+        mac      = data.get("mac",      "")
+        ob_entry = data.get("ob_entry", "")
 
-        emoji  = "🟢" if side == "LONG" else "🔴"
+        emoji     = "🟢" if side == "LONG" else "🔴"
+        entry_txt = "📦 OB" if ob_entry == "true" else "📉 Sin OB"
 
         message = (
             f"{emoji} <b>{side} — Frox Trader</b>\n"
@@ -65,13 +67,14 @@ def webhook():
             f"📌 Señal: {signal} | Conf: {conf}/5\n"
             f"💹 Par: {par} | TF: {tf}\n"
             f"━━━━━━━━━━━━━━━━\n"
-            f"🎯 Entry: <code>{entry}</code>\n"
+            f"🎯 Entry: <code>{entry}</code> {entry_txt}\n"
             f"🛑 SL:    <code>{sl}</code>\n"
             f"✅ TP1:   <code>{tp1}</code>\n"
             f"🚀 TP2:   <code>{tp2}</code>\n"
             f"━━━━━━━━━━━━━━━━\n"
             f"📊 MAC: {mac}"
         )
+
     elif data:
         message = data.get("value") or data.get("message") or str(data)
     else:
@@ -81,6 +84,7 @@ def webhook():
         send_telegram(message)
         print(f"[webhook] enviado: {message[:80]}")
         return "OK", 200
+
     return "Empty payload", 400
 
 @app.route("/", methods=["GET"])
@@ -92,4 +96,3 @@ if __name__ == "__main__":
     t.start()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
