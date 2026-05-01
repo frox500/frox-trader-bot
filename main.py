@@ -13,14 +13,18 @@ RENDER_URL       = os.environ["RENDER_URL"]
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    try:
-        requests.post(url, json={
-            "chat_id"    : TELEGRAM_CHAT_ID,
-            "text"       : message,
-            "parse_mode" : "HTML"
-        }, timeout=10)
-    except Exception as e:
-        print(f"[Telegram error] {e}")
+    for chat_id in TELEGRAM_CHAT_ID.split(","):
+        chat_id = chat_id.strip()
+        if not chat_id:
+            continue
+        try:
+            requests.post(url, json={
+                "chat_id"    : chat_id,
+                "text"       : message,
+                "parse_mode" : "HTML"
+            }, timeout=10)
+        except Exception as e:
+            print(f"[Telegram error {chat_id}] {e}")
 
 def keep_alive():
     while True:
